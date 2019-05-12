@@ -33,17 +33,17 @@ func TestSetClipboardTemporarily(t *testing.T) {
 	ensure(t, SetClipboard(prev))
 
 	tmp := []byte("temporary")
-	go func() {
-		ensure(t, SetClipboardTemporarily(tmp, 2*time.Second))
-		cur, err := GetClipboard()
-		ensure(t, err)
-		if !bytes.Equal(cur, prev) {
-			t.Fatalf("0: expected=%q  actual=%q", prev, cur)
-		}
-	}()
+	done, err := SetClipboardTemporarily(tmp, 2*time.Second)
+	ensure(t, err)
+
+	cur, err := GetClipboard()
+	ensure(t, err)
+	if !bytes.Equal(cur, tmp) {
+		t.Fatalf("0: expected=%q  actual=%q", tmp, cur)
+	}
 
 	time.Sleep(10 * time.Millisecond)
-	cur, err := GetClipboard()
+	cur, err = GetClipboard()
 	ensure(t, err)
 	if !bytes.Equal(cur, tmp) {
 		t.Fatalf("1: expected=%q  actual=%q", tmp, cur)
@@ -62,6 +62,9 @@ func TestSetClipboardTemporarily(t *testing.T) {
 	if !bytes.Equal(cur, prev) {
 		t.Fatalf("3: expected=%q  actual=%q", prev, cur)
 	}
+
+	err = <-done
+	ensure(t, err)
 }
 
 func ensure(t *testing.T, err error) {

@@ -19,27 +19,27 @@ func SetClipboard(data []byte) error {
 	return cmd.Run()
 }
 
-func SetClipboardTemporarily(data []byte, d time.Duration) error {
+func SetClipboardTemporarily(data []byte, d time.Duration) (chan error, error) {
 	prev, err := GetClipboard()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	donechan := make(chan error, 1)
 	sigchan := make(chan os.Signal, 1)
 	go func() {
-		for _ = range sigchan {
-			SetClipboard(prev)
+		select {
+		case <-sigchan:
+			donechan <- SetClipboard(prev)
 			os.Exit(0)
+		case <-time.After(d):
+			donechan <- SetClipboard(prev)
 		}
 	}()
 	signal.Notify(sigchan, os.Interrupt, os.Kill)
 
 	if err := SetClipboard(data); err != nil {
-		return err
+		return nil, err
 	}
-	time.Sleep(d)
-	if err := SetClipboard(prev); err != nil {
-		return err
-	}
-	return nil
+	return donechan, nil
 }
